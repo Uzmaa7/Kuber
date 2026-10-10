@@ -65,3 +65,5 @@ deepeval                    # Pytest-compatible test runner wrapping RAGAS & saf
 langfuse                    # Live production monitoring, tracing & user feedback collection
 
 sentence-transformers       # Embeddings
+
+html2text
