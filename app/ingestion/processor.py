@@ -12,7 +12,7 @@ from qdrant_client.http import models
 
 # Import local modules
 from app.config import settings
-from app.services.retrieval.embedding import embed_texts
+from app.services.retrieval.embedding import embed_texts, embed_texts_sparse
 from app.ingestion.loaders.pdf import parse_pdf
 from app.ingestion.loaders.html import parse_html
 from app.ingestion.loaders.text import parse_text
@@ -107,13 +107,22 @@ def process_file(file_path: str, filename: str, source_type: str):
                     batch_texts = [chunk["text"] for chunk in batch_chunks]
                     
                     # Embed current batch
+                   
                     embeddings = embed_texts(batch_texts)
+                    sparse_embeddings = embed_texts_sparse(batch_texts)
 
                     points = []
-                    for chunk_obj, vector in zip(batch_chunks, embeddings):
+                    for chunk_obj, vector, sparse_vec in zip(batch_chunks, embeddings, sparse_embeddings):
                         points.append(models.PointStruct(
                             id=str(uuid.uuid4()),
-                            vector=vector,
+                            vector={
+                                "dense": vector,
+                                "sparse": models.SparseVector(
+                                    indices=sparse_vec["indices"],
+                                    values=sparse_vec["values"]
+                                )
+                            },
+                            
                             payload=chunk_obj["metadata"]
                         ))
                     
@@ -145,7 +154,13 @@ def run_universal_ingestion(base_dir: str, explicit_source_type: str = None, wip
         if not qdrant_client.collection_exists(settings.QDRANT_COLLECTION):
             qdrant_client.create_collection(
                 collection_name=settings.QDRANT_COLLECTION,
-                vectors_config=models.VectorParams(size=768, distance=models.Distance.COSINE)
+                vectors_config={
+                    "dense": models.VectorParams(size=768, distance=models.Distance.COSINE)
+                },
+                sparse_vectors_config={
+                    "sparse": models.SparseVectorParams()
+                }
+                
             )
             logfire.info(f"Created collection {settings.QDRANT_COLLECTION}")
 
