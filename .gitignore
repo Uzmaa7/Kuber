@@ -47,6 +47,9 @@ Thumbs.db
 commands.md
 
 debug_output
+app_inspector.py
+test_ingestion_debug.py
+test_search.py
 
 .logfire
 
