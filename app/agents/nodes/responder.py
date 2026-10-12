@@ -7,7 +7,8 @@ from langchain_groq import ChatGroq
 llm = ChatGroq(
     api_key = settings.GROQ_API_KEY,
     model = settings.GROQ_MODEL,
-    temperature=0
+    temperature=0,
+    max_tokens=600
 )
 
 
@@ -50,8 +51,13 @@ def generate_node(state: AgentState):
                 break
 
         prompt = f"""
-        You are a Senior Technical Architect.
-        Answer the question using the TECHNICAL CONTEXT provided.
+        You are a Senior Technical Architect specializing in Kubernetes.
+        Answer the question using the TECHNICAL CONTEXT provided below.
+        
+        CRITICAL FORMATTING RULES:
+        - Provide direct, highly concise technical answers.
+        - When showing YAML manifests, configuration snippets, or CLI commands, omit unnecessary conversational filler and keep explanations strictly under 3-4 sentences.
+        - Do not repeat or re-quote the technical context verbosely.
 
         TECHNICAL CONTEXT:
         {full_context}
@@ -66,6 +72,10 @@ def generate_node(state: AgentState):
     with logfire.span("LLM Synthesis"):
         try:
             response = llm.invoke(prompt)
+            finish_reason = response.response_metadata.get("finish_reason", "stop")
+            if finish_reason == "length":
+                logfire.error("WARNING: LLM response was truncated due to max_tokens limit!")
+                
             logfire.info("Response synthesized successfully.")
     
             return {

@@ -37,6 +37,11 @@ graph.add_conditional_edges(
     }
 )
 
+# ----------------- BASELINE TEMPORARY CHANGE -----------------
+# Planner node ko bypass karke direct retriever par bhej rahe hain
+# graph.add_edge("planner", "retriever")
+# -------------------------------------------------------------
+
 
 graph.add_edge("retriever", "responder")
 graph.add_edge("responder", END)

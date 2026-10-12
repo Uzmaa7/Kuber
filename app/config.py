@@ -23,6 +23,8 @@ class Settings:
     GROQ_MODEL = "openai/gpt-oss-20b"
     GROQ_FALLBACK_API_KEY = os.getenv("GROQ_FALLBACK_API_KEY")
 
+    GUARD_KEY = os.getenv("GUARD_KEY")
+
     # --- LLM GATEWAY (PORTKEY) ---
     PORTKEY_API_KEY = os.getenv("PORTKEY_API_KEY")
     GROQ_SLUG =  "rag"     # primary: @rag/llama-3.3-70b-versatile
