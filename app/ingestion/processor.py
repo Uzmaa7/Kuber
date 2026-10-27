@@ -123,7 +123,11 @@ def process_file(file_path: str, filename: str, source_type: str):
                                 )
                             },
                             
-                            payload=chunk_obj["metadata"]
+                            # payload=chunk_obj["metadata"]
+                            payload={
+                                "text": chunk_obj["text"],       
+                                **chunk_obj["metadata"]         
+                            }
                         ))
                     
                     qdrant_client.upsert(

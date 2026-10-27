@@ -8,7 +8,9 @@ from app.services.retrieval.embedding import embed_query, embed_query_sparse
 # Initialize Qdrant Client
 client = QdrantClient(
     url=settings.QDRANT_URL,
-    api_key=settings.QDRANT_API_KEY
+    api_key=settings.QDRANT_API_KEY,
+    timeout=60,
+    check_compatibility=False
 )
 
 def search_enterprise_knowledge(query: str, limit: int = 8):
@@ -49,7 +51,7 @@ def search_enterprise_knowledge(query: str, limit: int = 8):
             results.append({
                 "content": res.payload.get("text", ""),
                 "source": res.payload.get("source", "Unknown"),
-                "score": res.score
+                "score": float(res.score)
             })
         
         return results

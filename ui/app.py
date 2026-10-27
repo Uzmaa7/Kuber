@@ -102,12 +102,15 @@ if prompt := st.chat_input("Ask about your documentation..."):
                     # --- SHOW SOURCES (NESTED EXPANDABLES) ---
                     sources = data.get("sources", [])
                     if sources:
-                        with st.expander("📄 View Retrieved Context (Sources)"):
-                            for i, source in enumerate(sources):
-                                # Create a preview title for each chunk
-                                preview = source[:100].replace("\n", " ") + "..."
-                                with st.expander(f"Chunk {i+1}: {preview}"):
-                                    st.info(source)
+                        with st.expander("📄 View Retrieved Context (Sources & Chunks)", expanded=False):
+                            for i, src in enumerate(sources):
+                                filename = src.get("source", "Unknown")
+                                content = src.get("content", "No content available")
+                                score = src.get("score", 0.0)
+            
+                                with st.expander(f"Chunk {i+1} | 📁 {filename} (Score: {score:.4f})"):
+                                    st.markdown("**Full Chunk Content:**")
+                                    st.markdown(content)
                 except Exception as e:
                     logfire.error(f"UI-Backend Connection Failed: {e}")
                     status.update(label="Connection Failed", state="error")

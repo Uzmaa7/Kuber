@@ -5,6 +5,11 @@ from nemoguardrails import RailsConfig, LLMRails
 from app.config import settings
 from app.guardrails.colang_rules import COLANG_CONTENT, YAML_CONTENT, RAIL_INDICATORS
 
+#=======================================
+from langchain_openai import ChatOpenAI
+from portkey_ai import createHeaders, PORTKEY_GATEWAY_URL
+from app.gateway import GATEWAY_CONFIG
+
 
 _rails: LLMRails | None = None
 
@@ -17,10 +22,24 @@ def initialize_rails() -> None:
     """
     global _rails
 
-    guard_llm = ChatGroq(
-        api_key=settings.GUARD_KEY,  
-        model="openai/gpt-oss-20b",
-        temperature=0
+    # guard_llm = ChatGroq(
+    #     api_key=settings.GUARD_KEY,  
+    #     model="openai/gpt-oss-20b",
+    #     temperature=0
+    # )
+    guard_llm = ChatOpenAI(
+        api_key=settings.PORTKEY_API_KEY,
+        base_url=PORTKEY_GATEWAY_URL,
+        model="@rag/openai/gpt-oss-20b", # Portkey gateway model slug
+        temperature=0,
+        default_headers=createHeaders(
+            api_key=settings.PORTKEY_API_KEY,
+            config=GATEWAY_CONFIG,
+            metadata={
+                "feature": "guardrails",
+                "environment": "production"
+            }
+        )
     )
 
     config = RailsConfig.from_content(
@@ -29,7 +48,7 @@ def initialize_rails() -> None:
     )
 
     _rails = LLMRails(config, llm=guard_llm)
-    logfire.info("NeMo Guardrails initialised (openai/gpt-oss-20b).")
+    logfire.info("NeMo Guardrails initialized via Portkey Gateway.")
     
     
 

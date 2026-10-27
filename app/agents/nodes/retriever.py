@@ -22,6 +22,8 @@ def retrieve_node(state: AgentState):
             reranked_docs = rerank_documents(query, raw_results, top_n=5)
             
             logfire.info("Reranking complete. Kept top 5 most relevant chunks.")
+
+            
             
         # Ab source aur content dono ko nicely format kar lo LLM ke liye
         formatted_docs = [
@@ -31,6 +33,7 @@ def retrieve_node(state: AgentState):
     
     return {
         "documents": formatted_docs,
+        "raw_documents": reranked_docs,
         "status": f"Found technical context.",
         "plan": state["plan"] + ["Context Retrieved"]
     }

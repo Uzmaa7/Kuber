@@ -8,12 +8,17 @@ from dotenv import load_dotenv
 
 load_dotenv()
 logfire.configure(token=os.getenv("LOGFIRE_TOKEN"))
+import logging
+logging.getLogger("nemoguardrails").setLevel(logging.WARNING)
+logging.getLogger("httpx").setLevel(logging.WARNING)
 
 # Now safe to import app modules - logfire is already active
 from fastapi import FastAPI, Response
 from app.agents.graph import workflow
 from app.guardrails import initialize_rails, guard
-
+from app.services.cache.redis_cache import create_redis_cache_index
+from app.services.retrieval.embedding import embed_query
+from app.services.cache.redis_cache import check_semantic_cache, store_in_semantic_cache
 
 from pydantic import BaseModel
 from typing import Optional
@@ -26,6 +31,8 @@ app = FastAPI(title="Enterprise Agentic RAG API")
 @app.on_event("startup")
 def startup_event():
     initialize_rails()
+    create_redis_cache_index()
+    logfire.info("Redis Semantic Cache index initialized.")
 
 class QueryRequest(BaseModel):
     q: str
@@ -69,6 +76,30 @@ def query(request: QueryRequest):
     config = {"configurable": {"thread_id": thread_id}}
     
     try:
+        
+
+
+        # 1. Query ka embedding nikalo
+        query_vector = embed_query(q)
+
+        # 2. Redis semantic cache check karo
+        cached_answer = check_semantic_cache(query_vector, threshold=0.71)
+
+        if cached_answer:
+            print(f"🚀 [REDIS CACHE HIT] Query served instantly for: '{q}'")
+            return {
+                "question": q,
+                "answer": cached_answer,
+                "thought_process": ["Cache: Hit (Redis Semantic Cache)", "Retrieval: Skipped"],
+                "status": "Cache hit — instant response (<50ms).",
+                "sources": []
+            }
+
+
+        print(f"❌ [REDIS CACHE MISS] Running normal RAG pipeline for: '{q}'")
+
+
+
         # Gate 1: NeMo Guardrails — blocks off-topic, jailbreaks, and handles dialog
         rail_fired, rail_response = guard(q)
         if rail_fired:
@@ -81,15 +112,20 @@ def query(request: QueryRequest):
                 "sources": []
             }
 
-        
         final_output = workflow.invoke(initial_state, config=config)
+        final_answer = final_output.get("final_answer")
+
+        if final_answer:
+            store_in_semantic_cache(query=q, response=final_answer, query_vector=query_vector)
+            logfire.info(f"New response stored in Redis Semantic Cache for query: '{q}'")
+        
         
         return {
             "question": q,
             "answer": final_output.get("final_answer"),
             "thought_process": final_output.get("plan"),
             "status": final_output.get("status"),
-            "sources": final_output.get("documents", [])
+            "sources": final_output.get("raw_documents", [])
         }
     except Exception as e:
         logfire.error(f" Backend Execution Failed: {e}")

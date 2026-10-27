@@ -2,14 +2,10 @@ import logfire
 from app.agents.state import AgentState
 from app.config import settings
 from langchain_groq import ChatGroq
+from app.gateway import portkey_client, extract_cache_status
 
 
-llm = ChatGroq(
-    api_key = settings.GROQ_API_KEY,
-    model = settings.GROQ_MODEL,
-    temperature=0,
-    max_tokens=600
-)
+
 
 
 def generate_node(state: AgentState):
@@ -54,10 +50,10 @@ def generate_node(state: AgentState):
         You are a Senior Technical Architect specializing in Kubernetes.
         Answer the question using the TECHNICAL CONTEXT provided below.
         
-        CRITICAL FORMATTING RULES:
-        - Provide direct, highly concise technical answers.
-        - When showing YAML manifests, configuration snippets, or CLI commands, omit unnecessary conversational filler and keep explanations strictly under 3-4 sentences.
-        - Do not repeat or re-quote the technical context verbosely.
+        CRITICAL OUTPUT INSTRUCTIONS:
+        1. PRIORITY ON CODE/MANIFESTS: Always output complete, fully valid YAML manifests, configurations, or CLI commands FIRST. Never truncate or compromise a code block.
+        2. STRICT BREVITY FOR TEXT: Limit all prose and explanation to maximum 2-3 sentences. Omit all greeting intros, preambles, and lengthy bullet points.
+        3. NO VERBOSE QUOTING: Do not repeat the context verbosely.
 
         TECHNICAL CONTEXT:
         {full_context}
@@ -71,17 +67,29 @@ def generate_node(state: AgentState):
 
     with logfire.span("LLM Synthesis"):
         try:
-            response = llm.invoke(prompt)
-            finish_reason = response.response_metadata.get("finish_reason", "stop")
-            if finish_reason == "length":
-                logfire.error("WARNING: LLM response was truncated due to max_tokens limit!")
-                
-            logfire.info("Response synthesized successfully.")
-    
+            response = portkey_client.chat.completions.create(
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.1,
+                max_tokens=600
+            )
+            content = response.choices[0].message.content
+            cache_status = extract_cache_status(response)
+            is_cache_hit = cache_status == "HIT"
+
+            if is_cache_hit:
+                logfire.info("Gateway Cache Hit — response served from Portkey cache.")
+                plan_update = state["plan"] + ["Cache: Hit"]
+                status = "Cache hit — instant response."
+            else:
+                logfire.info("Response synthesised via LLM.")
+                plan_update = state["plan"]
+                status = "Response generated."
+
             return {
-                "final_answer": response.content,
-                "status": "Response generated.",
-                "messages": [{"role": "assistant", "content": response.content}]
+                "final_answer": content,
+                "status": status,
+                "plan": plan_update,
+                "messages": [{"role": "assistant", "content": content}]
             }
 
         except Exception as e:

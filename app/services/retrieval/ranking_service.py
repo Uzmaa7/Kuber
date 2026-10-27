@@ -68,7 +68,7 @@ def rerank_documents(query: str, documents: list[dict], top_n: int = 5) -> list[
             reranked_docs.append({
                 "content": res["text"],
                 "source": meta.get("source", "Unknown"),
-                "score": res.get("score", 0.0)
+                "score": float(res.get("score", 0.0))
             })
 
         duration = time.time() - start_time

@@ -1,4 +1,4 @@
-from typing import TypedDict, List, Annotated
+from typing import TypedDict, List, Annotated, Dict, Any
 import operator
 
 
@@ -11,3 +11,4 @@ class AgentState(TypedDict):
     plan: List[str]
     status: str
     final_answer: str
+    raw_documents: List[Dict[str, Any]]
