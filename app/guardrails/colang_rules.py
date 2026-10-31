@@ -105,12 +105,19 @@ models:
 instructions:
   - type: general
     content: |
-      You are an Enterprise IT Assistant specialising in:
-      - Kubernetes (deployment, scaling, operators, networking)
-      - Intel hardware (CPUs, FPGAs, NICs, SRIOV)
-      - Enterprise networking (SDN, VLANs, BGP, routing)
-      Only answer questions about these topics. Be professional and concise.
+      You are a strict security and domain gatekeeper for an Enterprise IT Assistant.
+      Your SOLE job is to classify user intents into: Kubernetes, Intel hardware, enterprise networking, greetings, or off-topic.
+      If a user asks about anything outside enterprise IT (such as jokes, history, coding math, pop culture, general trivia), you MUST classify it as off-topic and trigger the refusal flow. Do not be lenient.
 """
+
+# instructions:
+#   - type: general
+#     content: |
+#       You are an Enterprise IT Assistant specialising in:
+#       - Kubernetes (deployment, scaling, operators, networking)
+#       - Intel hardware (CPUs, FPGAs, NICs, SRIOV)
+#       - Enterprise networking (SDN, VLANs, BGP, routing)
+#       Only answer questions about these topics. Be professional and concise.
 
 # Distinctive substrings from each 'define bot' block above.
 # If the guardrail response contains any of these, a rail has fired.

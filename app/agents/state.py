@@ -12,3 +12,5 @@ class AgentState(TypedDict):
     status: str
     final_answer: str
     raw_documents: List[Dict[str, Any]]
+    retry_count: int
+    document_score: str

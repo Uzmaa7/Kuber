@@ -35,6 +35,22 @@ def generate_node(state: AgentState):
         "{user_msg}"
         """
     else:
+
+        
+        
+        if state.get("document_score") == "no" and state.get("retry_count", 0) >= 2:
+            logfire.warning("Max retries reached with irrelevant documents. Returning fallback message.")
+            fallback_msg = "I'm sorry, but I couldn't find any relevant documentation regarding this."
+            return {
+                "final_answer": fallback_msg,
+                "status": "No relevant documents found after retries.",
+                "plan": state["plan"] + ["Fallback: Max retries exceeded"],
+                "messages": [{"role": "assistant", "content": fallback_msg}]
+            }
+
+
+        # ... 
+
         logfire.info("Generating technical RAG response.")
         max_context_chars = 25000
         full_context = ""
