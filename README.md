@@ -23,10 +23,17 @@ graph TD
     API --> Guard{NeMo Guardrails}
     Guard -->|Blocked| UI
     Guard -->|Pass| Planner{Planner Node}
+    
     Planner -->|Conversational| Responder[Responder Node]
-    Planner -->|Technical| Retriever[Retriever Node]
-    Retriever --> Reranker[FlashRank Local Reranker]
-    Reranker --> Responder
+    Planner -->|Technical| Retriever[Retriever Node + FlashRank Reranker]
+    
+    Retriever --> Grader{Document Grader}
+    
+    Grader -->|Relevant / Max Retries| Responder
+    Grader -->|Irrelevant & Retry < 2| Rewriter[Query Rewriter Node]
+    
+    Rewriter --> Retriever
+    
     Responder --> UI
     Responder -.-> Memory[(LangGraph MemorySaver)]
 ```
@@ -38,22 +45,24 @@ graph TD
 ```text
 ├── app/
 │   ├── agents/
-│   │   └── nodes/       # Planner, Retriever, Responder LangGraph nodes
-│   ├── gateway/         # Portkey LLM gateway — primary + fallback Groq routing
-│   ├── guardrails/      # NeMo Guardrails input/output filtering
+│   │   ├── nodes/         # Planner, Retriever, Grader, Rewriter, Responder LangGraph nodes
+│   │   ├── graph.py       # LangGraph orchestration with corrective loop & MemorySaver
+│   │   └── state.py       # TypedDict state definition with retry_count & document_score
+│   ├── gateway/           # Portkey LLM gateway — primary + fallback Groq routing
+│   ├── guardrails/        # NeMo Guardrails input/output filtering
 │   ├── ingestion/
 │   │   ├── chunking/    # Text splitting strategies
 │   │   └── loaders/     # PDF (Document AI), HTML, TXT, DOCX, PPTX parsers
 │   ├── services/
+│   │   ├── cache/       # Redis semantic caching layer
 │   │   └── retrieval/   # Qdrant vector search + FlashRank reranking
-│   ├── config.py        # Centralized environment variable management
-│   └── main.py          # FastAPI entrypoint — guardrails gate + /query endpoint
-├── evals/               # RAGAS evaluation suite + Streamlit 3-tab demo
-├── ui/                  # Streamlit chat interface with reasoning step transparency
-├── DOCS/                # 18 architectural and operational guides
-├── DATA/                # Sample datasets (True vs Noisy documentation)
-├── Dockerfile           # Production container — serves app/ via uvicorn
-└── requirements.txt     # Locked dependencies
+│   ├── config.py          # Centralized environment variable management
+│   └── main.py            # FastAPI entrypoint — guardrails gate + /query endpoint
+├── evals/                 # RAGAS evaluation suite + Streamlit 3-tab demo
+├── ui/                    # Streamlit chat interface with reasoning step transparency
+├── DATA/                  # Sample datasets (True vs Noisy documentation)
+├── Dockerfile             # Production container — serves app/ via uvicorn
+└── requirements.txt       # Locked dependencies
 ```
 
 ---
@@ -63,7 +72,7 @@ graph TD
 | Layer | Technology |
 |-------|-----------|
 | Orchestration | LangChain + LangGraph |
-| LLMs | Groq (Llama 3.3 70B) via **Portkey** gateway |
+| LLMs | Groq via **Portkey** gateway |
 | Guardrails | NeMo Guardrails |
 | Vector DB | Qdrant Cloud |
 | Reranking | FlashRank (local, zero-latency) |
@@ -88,7 +97,7 @@ pip install -r requirements.txt
 
 ### 2. Configure environment
 
-Create a `.env` file — see `commands.md` Section 2 for all required keys (Groq, Qdrant, GCP, Portkey, Logfire, LangSmith, JUDGE_GROQ for evals).
+
 
 ### 3. Run data ingestion
 
@@ -115,28 +124,7 @@ streamlit run evals/app.py
 
 ---
 
-## Documentation Index
 
-| # | Guide | What it covers |
-|---|-------|---------------|
-| 1 | [System Overview](DOCS/01_SYSTEM_OVERVIEW.md) | High-level vision and end-to-end flow |
-| 2 | [Ingestion Engine](DOCS/02_INGESTION_ENGINE.md) | Document parsing and indexing pipeline |
-| 3 | [Node Intelligence](DOCS/03_NODE_INTELLIGENCE.md) | Planner, Retriever, Responder internals |
-| 4 | [Observability](DOCS/04_TRACING_AND_OBSERVABILITY.md) | Logfire + LangSmith tracing |
-| 5 | [GCP Prod Setup](DOCS/05_GCP_PROD_SETUP.md) | Step-by-step infrastructure provisioning |
-| 6 | [Deployment Strategy](DOCS/06_DEPLOYMENT_STRATEGY.md) | Cloud Build and Cloud Run details |
-| 7 | [Env Variables](DOCS/07_ENVIRONMENT_VARIABLES.md) | Complete configuration dictionary |
-| 8 | [GCP Roles & Services](DOCS/08_GCP_ROLES_AND_SERVICES.md) | IAM and service breakdown |
-| 9 | [Infra Architecture](DOCS/09_INFRA_ARCHITECTURE.md) | The 3-tier cloud blueprint |
-| 10 | [Redis Caching](DOCS/10_REDIS_CACHING.md) | Response caching layer design |
-| 11 | [Microservices Transition](DOCS/11_MICROSERVICES_TRANSITION.md) | Scaling beyond monolith |
-| 12 | [Known Gotchas](DOCS/12_KNOWN_GOTCHAS.md) | GCP quirks and architectural decisions |
-| 13 | [FlashRank Reranking](DOCS/13_FLASHRANK_RERANKING.md) | Local semantic reranker deep-dive |
-| 14 | [VPC Networking](DOCS/14_VPC_NETWORKING.md) | Private networking and VPC connectors |
-| 15 | [Guardrails](DOCS/15_GUARDRAILS.md) | NeMo Guardrails implementation |
-| 16 | [LLM Gateway](DOCS/16_LLM_GATEWAY.md) | Portkey routing, fallback, and observability |
-| 17 | [Evals](DOCS/17_EVALS.md) | RAGAS metrics theory and token budget |
-| 18 | [Evals Pipeline](DOCS/18_EVALS_PIPELINE.md) | Live eval pipeline and Streamlit demo |
 
 ---
 
